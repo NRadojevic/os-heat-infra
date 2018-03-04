@@ -1,0 +1,42 @@
+heat_template_version: ocata
+
+description:
+
+parameters:
+
+  name:
+    type: string
+    description: Name to be used for network and subnet
+    constraints:
+      - allowed_pattern: "[a-z][a-z0-9-]{1,}"
+
+resources:
+
+  network:
+    type: OS::Neutron::Net
+    properties:
+      name:
+        list_join: ['-', [ { get_param: name }, 'network' ]]
+
+outputs:
+
+  network_id:
+    value: { get_resource: network }
+
+  network_admin_state_up:
+    value: { get_attr: [ network, admin_state_up ] }
+
+  network_mtu:
+    value: { get_attr: [ network, mtu ] }
+
+  network_name:
+    value: { get_attr: [ network, name ] }
+
+  network_port_security_enabled:
+    value: { get_attr: [ network, port_security_enabled ] }
+
+  network_status:
+    value: { get_attr: [ network, status] }
+
+  network_tenant_id:
+    value: { get_attr: [ network, tenant_id ] }

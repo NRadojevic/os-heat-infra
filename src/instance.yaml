@@ -1,0 +1,157 @@
+heat_template_version: ocata
+
+description:
+
+parameters:
+    
+  name:
+    type: string
+    description: Name of the instance
+
+  key:
+    type: string
+    description: SSH key
+    constraints:
+      - custom_constraint: nova.keypair
+
+  image:
+    type: string
+    description: Operating system of the instance
+    constraints:
+      - custom_constraint: glance.image
+
+  flavor:
+    type: string
+    description: Size of the instance
+    constraints:
+      - custom_constraint: nova.flavor
+
+  network:
+    type: string
+    description: Network connected
+    constraints:
+      - custom_constraint: neutron.network
+
+  subnet:
+    type: string
+    description: Subnet connected
+    constraints:
+      - custom_constraint: neutron.subnet
+
+  security_groups:
+    type: comma_delimited_list
+    description: List of security groups
+
+  config:
+    type: string
+    description: Configuration applied
+    default: None
+
+  scheduler_hints:
+    type: json
+    description: A map used for scheduling a set of instances on different hosts
+    default: {}
+
+  extras:
+    type: json
+    description:
+    default:
+      volume_count: 0
+      volume_size: 0
+
+  software_config_transport:
+    type: string
+    default: POLL_SERVER_HEAT
+    constraints:
+      - allowed_values:
+          - POLL_SERVER_HEAT
+          - POLL_SERVER_CFN
+          - POLL_TEMP_URL
+          - ZAQAR_MESSAGE
+
+  package_upgrade:
+    type: boolean
+    default: false
+
+resources:
+
+  boot_config:
+    type: OS::Heat::CloudConfig
+    properties:
+      cloud_config:
+        users:
+          - default
+        final_message: "The system is finally up, after $UPTIME seconds"
+        package_upgrade: { get_param: package_upgrade }
+
+  server_init:
+    type: OS::Heat::MultipartMime
+    properties:
+      parts:
+        - config: { get_resource: boot_config }
+        - config: { get_param: config }
+          type: multipart
+
+  port:
+    type: OS::Neutron::Port
+    properties:
+      name: { get_param: name }
+      network: { get_param: network }
+      fixed_ips:
+        - subnet: { get_param: subnet }
+      security_groups: { get_param: security_groups }
+
+  instance:
+    type: OS::Nova::Server
+    properties:
+      name: { get_param: name }
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: { get_param: key }
+      networks:
+        - port: { get_resource: port }
+      user_data_format: SOFTWARE_CONFIG
+      user_data: {get_resource: server_init}
+      scheduler_hints: { get_param: scheduler_hints }
+      software_config_transport: { get_param: software_config_transport }
+
+  volumes:
+    type: OS::Heat::ResourceGroup
+    properties:
+      count: { get_param: [ extras, volume_count ] }
+      resource_def:
+        type: Custom::Basic::Volume
+        properties:
+          name:
+            list_join: ['-', [ { get_param: name }, 'vol', '%index%']]
+          instance: { get_resource: instance }
+          size: { get_param: [ extras, volume_size ] }
+
+outputs:
+
+  instance_id:
+    value: { get_resource: instance }
+
+  accessIPv4:
+    value: { get_attr: [ instance, accessIPv4 ] }
+
+  accessIPv6:
+    value: { get_attr: [ instance, accessIPv6 ] }
+
+  addresses:
+    value: { get_attr: [ instance, addresses ] }
+
+  console_urls:
+    value: { get_attr: [ instance, console_urls ] }
+
+  first_address:
+    value: { get_attr: [ instance, first_address ] }
+
+  instance_name:
+    value: { get_attr: [ instance, name ] }
+
+  name:
+    value: { get_attr: [ instance, name ] }
+
+  networks:
+    value: { get_attr: [ instance, networks ] }

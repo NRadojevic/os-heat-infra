@@ -1,0 +1,7 @@
+resource_registry:
+  "Custom::Basic::Instance": src/instance.yaml
+  "Custom::Basic::Network": src/network.yaml
+  "Custom::Basic::Subnet": src/subnet.yaml
+  "Custom::Basic::Router": src/router.yaml
+  "Custom::Basic::Connectivity": src/connectivity.yaml
+  "Custom::Basic::Volume": src/volume.yaml
